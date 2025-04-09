@@ -1,0 +1,6 @@
+opentelemetry-api>=1.22.0
+opentelemetry-sdk>=1.22.0
+opentelemetry-exporter-otlp>=1.22.0
+azure-monitor-opentelemetry-exporter>=1.0.0b13
+semantic-kernel>=0.9.0b1
+python-dotenv>=1.0.0 
