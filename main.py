@@ -7,10 +7,10 @@ from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
 
-from .agents import TerraformValidationAgent, TerraformCreationAgent, UserAgent
-from .custom_selection_strategy import CustomSelectionStrategy
-from .custom_termination_strategy import CustomTerminationStrategy
-from .plugins import TerraformFilePlugin, TerraformExecutionPlugin, UserPlugin
+from agents import TerraformValidationAgent, TerraformCreationAgent, UserAgent
+from custom_selection_strategy import CustomSelectionStrategy
+from custom_termination_strategy import CustomTerminationStrategy
+from plugins import TerraformFilePlugin, TerraformExecutionPlugin, UserPlugin
 from semantic_kernel.agents import AgentGroupChat
 from semantic_kernel.contents import AuthorRole, ChatMessageContent
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion

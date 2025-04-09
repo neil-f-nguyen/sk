@@ -1,46 +1,70 @@
-from typing import List
+import sys
+from typing import TYPE_CHECKING, Any, Callable, Awaitable, AsyncIterable
 
-from semantic_kernel.agents import Agent
-from semantic_kernel.contents import ChatMessageContent, ChatHistory
-from semantic_kernel.contents.chat_message_content import ChatMessageContent
-from semantic_kernel.contents.chat_history import ChatHistory
-from semantic_kernel.contents.author_role import AuthorRole
+if sys.version_info >= (3, 12):
+    from typing import override  # pragma: no cover
+else:
+    from typing_extensions import override  # pragma: no cover
 
-class UserAgent(Agent):
-    def __init__(self):
-        super().__init__(
-            name="UserAgent",
-            description="Agent representing the user in the Terraform configuration process",
-        )
-        self._system_message = ChatMessageContent(
-            role=AuthorRole.SYSTEM,
-            content="""You are a user interface agent responsible for interacting with the user.
+from semantic_kernel.contents import ChatMessageContent
+from semantic_kernel.functions import KernelArguments
+
+from .custom_agent_base import CustomAgentBase, Services
+from ..plugins.user_plugin import UserPlugin
+
+if TYPE_CHECKING:
+    from semantic_kernel.agents import AgentResponseItem, AgentThread
+    from semantic_kernel.kernel import Kernel
+
+INSTRUCTION = """You are a user interaction expert responsible for gathering feedback and requirements.
 Your tasks include:
-1. Asking questions to clarify requirements
+1. Asking questions to clarify user requirements
 2. Providing feedback on generated Terraform configurations
 3. Requesting changes or improvements
-4. Ensuring the final configuration meets user needs
+4. Ensuring configurations meet user needs
+5. Validating final configurations
 
 You have access to the following plugin functions:
-- user.request_user_feedback: Get feedback from the user
+- user.request_user_feedback: Request feedback from the user
 
-Always be clear and specific in your communications."""
+Always ensure:
+- Questions are clear and specific
+- Feedback is constructive
+- Requirements are well-understood
+- Changes are properly documented
+- User needs are met"""
+
+DESCRIPTION = """Select me to interact with the user and gather feedback."""
+
+
+class UserAgent(CustomAgentBase):
+    def __init__(self):
+        super().__init__(
+            service=self._create_ai_service(Services.OPENAI),
+            plugins=[UserPlugin()],
+            name="UserAgent",
+            instructions=INSTRUCTION.strip(),
+            description=DESCRIPTION.strip(),
         )
 
-    async def invoke(self, history: ChatHistory) -> ChatMessageContent:
-        system_message = self._system_message
-
-        messages = [system_message] + history.messages
-        response = await self._chat_completion_service.get_chat_message_contents(
+    @override
+    async def invoke(
+        self,
+        *,
+        messages: str | ChatMessageContent | list[str | ChatMessageContent] | None = None,
+        thread: "AgentThread | None" = None,
+        on_intermediate_message: Callable[[ChatMessageContent], Awaitable[None]] | None = None,
+        arguments: KernelArguments | None = None,
+        kernel: "Kernel | None" = None,
+        **kwargs: Any,
+    ) -> AsyncIterable["AgentResponseItem[ChatMessageContent]"]:
+        async for response in super().invoke(
             messages=messages,
-            temperature=0.7,
-            top_p=0.8,
-        )
-
-        # Get user feedback if this is a validation response
-        if self._kernel and "validation" in response[0].content.lower():
-            user_plugin = self._kernel.get_plugin("user")
-            user_feedback = await user_plugin.request_user_feedback(response[0].content)
-            response[0].content += f"\n\nUser Feedback: {user_feedback}"
-
-        return response[0] 
+            thread=thread,
+            on_intermediate_message=on_intermediate_message,
+            arguments=arguments,
+            kernel=kernel,
+            additional_user_message="Now interact with the user and gather feedback.",
+            **kwargs,
+        ):
+            yield response 

@@ -1,38 +1,40 @@
 from typing import List
 
 from semantic_kernel.agents import Agent
-from semantic_kernel.agents.termination_strategy import TerminationStrategy
+from semantic_kernel.agents.strategies.termination.termination_strategy import TerminationStrategy
 from semantic_kernel.contents import ChatMessageContent
 
+
 class CustomTerminationStrategy(TerminationStrategy):
+    """Custom termination strategy for determining when to end the conversation."""
+
     def __init__(self, agents: List[Agent]):
+        """Initialize the custom termination strategy.
+
+        Args:
+            agents: List of agents in the conversation
+        """
         super().__init__()
-        self.agents = agents
+        self._agents = agents
 
     async def should_terminate(
-        self,
-        chat_history: List[ChatMessageContent],
+        self, messages: List[ChatMessageContent]
     ) -> bool:
-        # Cần ít nhất 3 messages để bắt đầu kiểm tra
-        if len(chat_history) < 3:
+        """Determine if the conversation should terminate.
+
+        Args:
+            messages: List of messages in the conversation
+
+        Returns:
+            True if the conversation should terminate, False otherwise
+        """
+        if not messages:
             return False
-        
-        # Lấy 3 messages cuối cùng
-        last_three_messages = chat_history[-3:]
-        
-        # Kiểm tra nếu có một chu kỳ hoàn chỉnh (Creation -> Validation -> User)
-        if (
-            last_three_messages[0].name == "TerraformCreationAgent"
-            and last_three_messages[1].name == "TerraformValidationAgent"
-            and last_three_messages[2].name == "UserAgent"
-        ):
-            # Nếu UserAgent không yêu cầu thay đổi, kết thúc
-            user_feedback = last_three_messages[2].content.lower()
-            if "thay đổi" not in user_feedback and "sửa" not in user_feedback:
+
+        # Terminate if we've gone through all agents at least once
+        if len(messages) >= len(self._agents):
+            last_message = messages[-1]
+            if last_message.name == self._agents[-1].name:
                 return True
-        
-        # Nếu có quá nhiều chu kỳ (ví dụ: 5 chu kỳ), kết thúc
-        if len(chat_history) >= 15:  # 5 chu kỳ * 3 messages
-            return True
-        
+
         return False 
